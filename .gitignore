@@ -1,2 +1,10 @@
 .git
 .idea
+.vscode
+__pycache__/
+data
+multi3out
+weight
+bert_config.json
+pytorch_model.bin
+vocab.txt
