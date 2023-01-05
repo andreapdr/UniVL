@@ -1,5 +1,5 @@
 import torch
-import pickle
+from tqdm import tqdm
 from util import get_logger
 from torch.utils.data import DataLoader
 from dataloaders.dataloader_youcook_retrieval import Youcook_DataLoader
@@ -196,6 +196,7 @@ def main():
 
     model.eval()
     with torch.no_grad():
+        #for bid, batch in enumerate(tqdm(dataloader_multi3bench)):
         for bid, batch in enumerate(dataloader_multi3bench):
             batch = tuple(t.to(device) for t in batch)
             caption_ids, foil_ids, caption_mask, foil_mask, caption_segment, foil_segment, video, video_mask = batch
@@ -203,7 +204,10 @@ def main():
                 caption_ids, caption_mask, caption_segment, video, video_mask)
             sim = model.get_similarity_logits(
                 sequence_output, visual_output, caption_mask, video_mask)
-            print(sim)
+            print(sim.item())
+            if bid == 100:
+                break
+
 
 if __name__ == "__main__":
     main()

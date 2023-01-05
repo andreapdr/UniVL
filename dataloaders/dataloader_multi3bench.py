@@ -2,17 +2,28 @@ from torch.utils.data import Dataset
 import torch
 import numpy as np
 import json
+from os.path import expanduser
 
 
 class Multi3bench_DataLoader(Dataset):
 
     def __init__(self,
                  tokenizer,
-                 datapath="./data/multi3bench/smallChangeOfState.json"):
+                 datapath="./data/multi3bench/smallChangeOfState.json",
+                 feature_dir="~/VideoFeatureExtractor/processed"):
 
         self.data = json.load(open(datapath))
         self.idx2data = {i: k for i, k in enumerate(self.data.keys())}
         self.tokenizer = tokenizer
+        self.feature_dir = self._set_feature_dir(feature_dir)
+
+    def _set_feature_dir(self, feature_dir):
+        if "~" in feature_dir:
+            _feature_dir = self.feature_dir = expanduser(
+                "~") + "/VideoFeatureExtractor/processed"
+        else:
+            _feature_dir = feature_dir
+        return _feature_dir
 
     def __len__(self):
         return len(self.data)
@@ -34,12 +45,13 @@ class Multi3bench_DataLoader(Dataset):
         input_mask_caption = torch.tensor(input_mask_caption)
         input_mask_foil = torch.tensor(input_mask_foil)
         token_type_ids_caption = torch.tensor(token_type_ids_caption)
-        token_type_ids_foil =  torch.tensor(token_type_ids_foil)
+        token_type_ids_foil = torch.tensor(token_type_ids_foil)
         # <<< casting to tensors
         return caption_text, foil_text, input_mask_caption, input_mask_foil, token_type_ids_caption, token_type_ids_foil
 
     def _get_video(self, feature_idx):
-        feature_path = f"./data/multi3bench/{feature_idx}.npy"
+        #feature_path = f"./data/multi3bench/{feature_idx}.npy"
+        feature_path = f"{self.feature_dir}/{feature_idx}.npy"
         video_features = np.load(feature_path)
         video_mask = torch.ones(size=(1, video_features.shape[0]))
         return video_features, video_mask
