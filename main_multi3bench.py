@@ -1,15 +1,19 @@
-import torch
-from tqdm import tqdm
-from util import get_logger
-from torch.utils.data import DataLoader
-from dataloaders.dataloader_youcook_retrieval import Youcook_DataLoader
-from dataloaders.dataloader_multi3bench import Multi3bench_DataLoader
 import argparse
 import os
-import numpy as np
 import random
-from modules.tokenization import BertTokenizer
+import json
+
+import numpy as np
+import torch
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from datetime import datetime
+
+from dataloaders.dataloader_multi3bench import Multi3bench_DataLoader
+from dataloaders.dataloader_youcook_retrieval import Youcook_DataLoader
 from modules.modeling import UniVL
+from modules.tokenization import BertTokenizer
+from util import get_logger
 
 global logger
 VERBOSE = False
@@ -190,23 +194,34 @@ def main():
     tokenizer = BertTokenizer.from_pretrained(
         args.bert_model, do_lower_case=args.do_lower_case)
     model = init_model(args, device)
-    dataset_multi3bench = Multi3bench_DataLoader(tokenizer)
+    dataset_multi3bench = Multi3bench_DataLoader(
+        tokenizer, datapath="data/multi3bench/multi3bench.json")
     dataloader_multi3bench = DataLoader(
         dataset_multi3bench, batch_size=1, num_workers=1, shuffle=False)
 
+    json_res = json.load(open("data/multi3bench/multi3bench.json"))
+
     model.eval()
     with torch.no_grad():
-        #for bid, batch in enumerate(tqdm(dataloader_multi3bench)):
-        for bid, batch in enumerate(dataloader_multi3bench):
-            batch = tuple(t.to(device) for t in batch)
-            caption_ids, foil_ids, caption_mask, foil_mask, caption_segment, foil_segment, video, video_mask = batch
-            sequence_output, visual_output = model.get_sequence_visual_output(
-                caption_ids, caption_mask, caption_segment, video, video_mask)
-            sim = model.get_similarity_logits(
-                sequence_output, visual_output, caption_mask, video_mask)
-            print(sim.item())
-            if bid == 100:
-                break
+        for bid, (batch, video_id) in enumerate(tqdm(dataloader_multi3bench)):
+            texts, video, video_mask = batch
+            for task_id, task_data in texts.items():
+                texts_batch = tuple(t.to(device) for t in task_data)
+                text_id, text_mask, text_segment = texts_batch
+                video = video.to(device)
+                video_mask = video_mask.to(device)
+                try:
+                    sequence_output, visual_output = model.get_sequence_visual_output(
+                        text_id, text_mask, text_segment, video, video_mask)
+                    sim = model.get_similarity_logits(
+                        sequence_output, visual_output, text_mask, video_mask).item()
+                except:
+                    print(video_id[0])
+                json_res[video_id[0]][f"UniVL_{task_id}"] = sim
+
+    now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    json.dump(json_res, open(f"results/multi3bench_{now}.json", "w"), indent=4)
+                
 
 
 if __name__ == "__main__":
