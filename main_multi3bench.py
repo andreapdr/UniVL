@@ -1,26 +1,33 @@
+from util import get_logger
+from modules.tokenization import BertTokenizer
+from modules.modeling import UniVL
+from dataloaders.dataloader_youcook_retrieval import Youcook_DataLoader
+from dataloaders.dataloader_multi3bench import Multi3bench_DataLoader
+from collections import defaultdict
+from datetime import datetime
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+import torch
+import numpy as np
+import json
+import random
 import argparse
 import os
-import random
-import json
 
-import numpy as np
-import torch
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-from datetime import datetime
-
-from dataloaders.dataloader_multi3bench import Multi3bench_DataLoader
-from dataloaders.dataloader_youcook_retrieval import Youcook_DataLoader
-from modules.modeling import UniVL
-from modules.tokenization import BertTokenizer
-from util import get_logger
-
-global logger
-VERBOSE = False
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'    # TODO
 
 
 def get_args(description='UniVL on Pretrain'):
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument("--input-file", required=True,
+                        help="Path to annotations.json")
+    parser.add_argument("--video-feature", required=True,
+                        help="Path to video feature directory")
+    parser.add_argument("--change-state-setting", default="action_foil",
+                        help="Setting of the instrument Change-of-State in the Multi3bench")
+    parser.add_argument("--instrument", default="change-state",
+                        help="Multi3bench's instrument to test")
+
     parser.add_argument("--do_pretrain", action='store_true',
                         help="Whether to run training.")
     parser.add_argument("--do_train", action='store_true',
@@ -66,9 +73,9 @@ def get_args(description='UniVL on Pretrain'):
     parser.add_argument('--n_pair', type=int, default=1,
                         help='Num of pair to output from data loader')
 
-    parser.add_argument("--output_dir", default=None, type=str, required=True,
+    parser.add_argument("--output_dir", default=None, type=str, required=False,
                         help="The output directory where the model predictions and checkpoints will be written.")
-    parser.add_argument("--bert_model", default="bert-base-uncased", type=str, required=True,
+    parser.add_argument("--bert_model", default="bert-base-uncased", type=str, required=False,
                         help="Bert pre-trained model")
     parser.add_argument("--visual_model", default="visual-base",
                         type=str, required=False, help="Visual module")
@@ -76,7 +83,7 @@ def get_args(description='UniVL on Pretrain'):
                         type=str, required=False, help="Cross module")
     parser.add_argument("--decoder_model", default="decoder-base",
                         type=str, required=False, help="Decoder module")
-    parser.add_argument("--init_model", default=None, type=str,
+    parser.add_argument("--init_model", default="weight/univl.pretrained.bin", type=str,
                         required=False, help="Initial model.")
     parser.add_argument("--do_lower_case", action='store_true',
                         help="Set this flag if you are using an uncased model.")
@@ -130,42 +137,10 @@ def get_args(description='UniVL on Pretrain'):
     if args.sampled_use_mil:  # sample from each video, has a higher priority than use_mil.
         args.use_mil = True
 
-    # Check paramenters
-    if args.gradient_accumulation_steps < 1:
-        raise ValueError("Invalid gradient_accumulation_steps parameter: {}, should be >= 1".format(
-            args.gradient_accumulation_steps))
-    if not args.do_pretrain:
-        raise ValueError("`do_pretrain` must be True.")
-
     args.batch_size = int(args.batch_size / args.gradient_accumulation_steps)
 
     args.checkpoint_model = '{}_{}_{}_{}.checkpoint'.format(
         args.checkpoint_model, args.bert_model, args.max_words, args.max_frames)
-
-    return args
-
-
-def set_seed_logger(args):
-    global logger
-    random.seed(args.seed)
-    os.environ['PYTHONHASHSEED'] = str(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)  # if you are using multi-GPU.
-
-    torch.cuda.set_device(args.local_rank)
-    args.world_size = 1
-
-    if not os.path.exists(args.output_dir):
-        os.makedirs(args.output_dir, exist_ok=True)
-
-    logger = get_logger(os.path.join(args.output_dir, "log.txt"))
-
-    if VERBOSE:
-        logger.info("Effective parameters:")
-        for key in sorted(args.__dict__):
-            logger.info("  <<< {}: {}".format(key, args.__dict__[key]))
 
     return args
 
@@ -177,51 +152,79 @@ def init_model(args, device):
         model_state_dict = None
 
     cache_dir = None
-    model = UniVL.from_pretrained(args.bert_model, args.visual_model, args.cross_model, args.decoder_model,
-                                  cache_dir=cache_dir, state_dict=model_state_dict, task_config=args)
+    model = UniVL.from_pretrained(
+        args.bert_model,
+        args.visual_model,
+        args.cross_model,
+        args.decoder_model,
+        cache_dir=cache_dir,
+        state_dict=model_state_dict,
+        task_config=args
+    )
 
     model.to(device)
 
     return model
 
 
+def compute_results(preds, labels):
+    pass
+
+
 def main():
-    global logger
     args = get_args()
-    args = set_seed_logger(args)
-
     device = "cuda"
-    tokenizer = BertTokenizer.from_pretrained(
-        args.bert_model, do_lower_case=args.do_lower_case)
-    model = init_model(args, device)
-    dataset_multi3bench = Multi3bench_DataLoader(
-        tokenizer, datapath="data/multi3bench/multi3bench.json")
-    dataloader_multi3bench = DataLoader(
-        dataset_multi3bench, batch_size=1, num_workers=1, shuffle=False)
 
-    json_res = json.load(open("data/multi3bench/multi3bench.json"))
+    tokenizer = BertTokenizer.from_pretrained(
+        args.bert_model,
+        do_lower_case=True)
+
+    model = init_model(args, device)
+
+    dataset_multi3bench = Multi3bench_DataLoader(
+        tokenizer,
+        datapath=args.input_file,
+        feature_dir=args.video_feature,
+        instrument=args.instrument
+    )
+
+    dataloader_multi3bench = DataLoader(
+        dataset_multi3bench,
+        batch_size=1,
+        num_workers=1,
+        shuffle=False
+    )
 
     model.eval()
+    results = defaultdict(dict)
     with torch.no_grad():
-        for bid, (batch, video_id) in enumerate(tqdm(dataloader_multi3bench)):
+        for bid, (batch, _) in enumerate(tqdm(dataloader_multi3bench)):
             texts, video, video_mask = batch
             for task_id, task_data in texts.items():
                 texts_batch = tuple(t.to(device) for t in task_data)
                 text_id, text_mask, text_segment = texts_batch
                 video = video.to(device)
                 video_mask = video_mask.to(device)
-                try:
-                    sequence_output, visual_output = model.get_sequence_visual_output(
-                        text_id, text_mask, text_segment, video, video_mask)
-                    sim = model.get_similarity_logits(
-                        sequence_output, visual_output, text_mask, video_mask).item()
-                except:
-                    print(video_id[0])
-                json_res[video_id[0]][f"UniVL_{task_id}"] = sim
+
+                sequence_output, visual_output = model.get_sequence_visual_output(
+                    text_id,
+                    text_mask,
+                    text_segment,
+                    video,
+                    video_mask
+                )
+
+                sim = model.get_similarity_logits(
+                    sequence_output,
+                    visual_output,
+                    text_mask,
+                    video_mask
+                )
+
+                results[bid][task_id] = sim.item()
 
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    json.dump(json_res, open(f"results/multi3bench_{now}.json", "w"), indent=4)
-                
+    json.dump(results, open(f"results/results_{now}.json", "w"))
 
 
 if __name__ == "__main__":
