@@ -167,8 +167,12 @@ def init_model(args, device):
     return model
 
 
-def compute_results(preds, labels):
-    pass
+def compute_results(preds, task):
+    corrects = 0
+    for k, v in preds.items():
+        if v['caption'] > v[task]:
+            corrects += 1
+    print(f'Accuracy: {round(corrects/len(preds), 4)}')
 
 
 def main():
@@ -225,6 +229,7 @@ def main():
 
     now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     json.dump(results, open(f"results/results_{now}.json", "w"))
+    compute_results(results, task=args.change_state_setting)
 
 
 if __name__ == "__main__":
