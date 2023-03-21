@@ -1,0 +1,121 @@
+import torch
+import os
+from modules.modeling import UniVL
+from argparse import ArgumentParser
+from modules.tokenization import BertTokenizer
+from tqdm import tqdm
+from dataloaders.dataloader_VLBench import VLBenchDataset
+from VideoFeatureExtractor.model import get_s3dg_model
+
+
+def init_model(args, device):
+    model_state_dict = torch.load("weight/univl.pretrained.bin", map_location="cpu")
+
+    cache_dir = None
+    model = UniVL.from_pretrained(
+        pretrained_bert_name="bert-base-uncased",
+        visual_model_name="visual-base",
+        cross_model_name="cross-base",
+        decoder_model_name="decoder-base",
+        state_dict=model_state_dict,
+        cache_dir=cache_dir,
+        task_config=args,
+    )
+
+    model.to(device)
+
+    return model
+
+
+def run_vlbench(args):
+    device = args.device
+    model = init_model(args, device=device)
+    model.eval()
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True)
+
+    print("- loaded pre-trained UniVL model")
+    s3dg_model = get_s3dg_model(
+        s3dg_path="VideoFeatureExtractor/model/s3d_howto100m.pth", device=device
+    )
+    print("- loaded pre-trained S3DG video-feature extractor")
+
+    vldataset = VLBenchDataset(
+        datapath=os.path.expanduser("~/datasets/vl-bench/cos-balanced.reduced.json"),
+        tokenizer=tokenizer,
+        video_feature_extractor=s3dg_model,
+        device=device,
+    )
+
+    dataloader = torch.utils.data.DataLoader(vldataset, batch_size=1, shuffle=False)
+    with torch.no_grad():
+        pairwise_acc = 0
+        for batch in tqdm(dataloader):
+            video, _text = batch
+            video_feat = video["video_feat"].to(device)
+            video_mask = video["video_mask"].to(device)
+            capt_id = _text["capt"].to(device)
+            capt_mask = _text["capt_mask"].to(device)
+            capt_token_type = _text["capt_token_type"].to(device)
+            foil_id = _text["foil"].to(device)
+            foil_mask = _text["foil_mask"].to(device)
+            foil_token_type = _text["foil_token_type"].to(device)
+
+            capt_sequence_output, capt_visual_output = model.get_sequence_visual_output(
+                capt_id, capt_mask, capt_token_type, video_feat, video_mask
+            )
+            foil_sequence_output, foil_visual_output = model.get_sequence_visual_output(
+                foil_id, foil_mask, foil_token_type, video_feat, video_mask
+            )
+
+            capt_sim = model.get_similarity_logits(
+                capt_sequence_output, capt_visual_output, capt_mask, video_mask
+            )
+            foil_sim = model.get_similarity_logits(
+                foil_sequence_output, foil_visual_output, foil_mask, video_mask
+            )
+            if capt_sim > foil_sim:
+                pairwise_acc += 1
+
+        print(f"- Pairwise accuracy: {pairwise_acc / len(vldataset):.3f}")
+
+
+if __name__ == "__main__":
+    parser = ArgumentParser(description="UniVL on VL-Bench")
+
+    parser.add_argument("--max_words", type=int, default=20)
+    parser.add_argument("--max_frames", type=int, default=100)
+    parser.add_argument("--stage_two", action="store_true")
+    parser.add_argument(
+        "--video_dim", type=int, default=1024, help="video feature dimension"
+    )
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--n_gpu", type=int, default=1)
+    parser.add_argument(
+        "--n_pair", type=int, default=1, help="Num of pair to output from data loader"
+    )
+    parser.add_argument("--margin", type=float, default=0.1, help="margin for loss")
+    parser.add_argument(
+        "--negative_weighting",
+        type=int,
+        default=1,
+        help="Weight the loss for intra negative",
+    )
+    parser.add_argument(
+        "--hard_negative_rate",
+        type=float,
+        default=0.5,
+        help="rate of intra negative sample",
+    )
+    parser.add_argument(
+        "--use_mil",
+        action="store_true",
+        help="Whether use MIL as Miech et. al. (2020).",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+    )
+    args = parser.parse_args()
+
+    run_vlbench(args)

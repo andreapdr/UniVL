@@ -131,17 +131,17 @@ class PreTrainedModel(nn.Module):
 
         load(model, prefix='')
 
-        if prefix is None and (task_config is None or task_config.local_rank == 0):
-            logger.info("-" * 20)
-            if len(missing_keys) > 0:
-                logger.info("Weights of {} not initialized from pretrained model: {}"
-                            .format(model.__class__.__name__, "\n   " + "\n   ".join(missing_keys)))
-            if len(unexpected_keys) > 0:
-                logger.info("Weights from pretrained model not used in {}: {}"
-                            .format(model.__class__.__name__, "\n   " + "\n   ".join(unexpected_keys)))
-            if len(error_msgs) > 0:
-                logger.error("Weights from pretrained model cause errors in {}: {}"
-                             .format(model.__class__.__name__, "\n   " + "\n   ".join(error_msgs)))
+        # if prefix is None and (task_config is None or task_config.local_rank == 0):
+        #     logger.info("-" * 20)
+        #     if len(missing_keys) > 0:
+        #         logger.info("Weights of {} not initialized from pretrained model: {}"
+        #                     .format(model.__class__.__name__, "\n   " + "\n   ".join(missing_keys)))
+        #     if len(unexpected_keys) > 0:
+        #         logger.info("Weights from pretrained model not used in {}: {}"
+        #                     .format(model.__class__.__name__, "\n   " + "\n   ".join(unexpected_keys)))
+        #     if len(error_msgs) > 0:
+        #         logger.error("Weights from pretrained model cause errors in {}: {}"
+        #                      .format(model.__class__.__name__, "\n   " + "\n   ".join(error_msgs)))
 
         return model
 
