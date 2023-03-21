@@ -8,3 +8,4 @@ weight
 bert_config.json
 pytorch_model.bin
 vocab.txt
+VideoFeatureExtractor/*
