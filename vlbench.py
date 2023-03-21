@@ -29,6 +29,7 @@ def init_model(args, device):
 
 def run_vlbench(args):
     device = args.device
+    benchmark_path = os.path.expanduser(args.benchmark_path)
     model = init_model(args, device=device)
     model.eval()
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True)
@@ -40,8 +41,10 @@ def run_vlbench(args):
     print("- loaded pre-trained S3DG video-feature extractor")
 
     vldataset = VLBenchDataset(
-        datapath=os.path.expanduser("~/datasets/vl-bench/cos-balanced.reduced.json"),
+        datapath=benchmark_path,
         tokenizer=tokenizer,
+        instrument=args.instrument,
+        task=args.task,
         video_feature_extractor=s3dg_model,
         device=device,
     )
@@ -81,7 +84,13 @@ def run_vlbench(args):
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="UniVL on VL-Bench")
-
+    parser.add_argument(
+        "--benchmark_path",
+        type=str,
+        default="~/datasets/vl-bench/cos-balanced.reduced.json",
+    )
+    parser.add_argument("--instrument", type=str, default="change-of-state")
+    parser.add_argument("--task", type=str, default="action")
     parser.add_argument("--max_words", type=int, default=20)
     parser.add_argument("--max_frames", type=int, default=100)
     parser.add_argument("--stage_two", action="store_true")
