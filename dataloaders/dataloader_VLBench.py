@@ -79,7 +79,13 @@ class VLBenchDataset(Dataset):
         return video, text
 
     def _extract_features(self, idx):
-        video_path = os.path.join(self.videodir, self.data[idx]["video-id"]) + ".mp4"
+        if self.data[idx]["youtube_id"] is not None:
+            video_fname = self.data[idx]["youtube_id"] + ".mp4"
+        else:
+            video_fname = self.data[idx][
+                "video_file"
+            ]  # TODO: what about the extension?
+        video_path = os.path.join(self.videodir, video_fname)
         video = torchvision.io.read_video(
             video_path,
             pts_unit="sec",
