@@ -46,6 +46,7 @@ def run_vlbench(args):
         instrument=args.instrument,
         task=args.task,
         video_feature_extractor=s3dg_model,
+        videodir=args.videodir,
         device=device,
     )
 
@@ -91,6 +92,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--instrument", type=str, default="change-of-state")
     parser.add_argument("--task", type=str, default="action")
+    parser.add_argument("--videodir", type=str, default="~/datasets/vl-bench/videos")
     parser.add_argument("--max_words", type=int, default=20)
     parser.add_argument("--max_frames", type=int, default=100)
     parser.add_argument("--stage_two", action="store_true")
