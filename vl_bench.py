@@ -27,7 +27,25 @@ def init_model(args, device):
     return model
 
 
+def run_preprocessing(args):
+    from VideoFeatureExtractor.preprocess_vlbench import convert_multi3bench
+    from VideoFeatureExtractor.extract import extract
+
+    print("- extracting video features via S3DG")
+    dataset_path = os.path.expanduser(args.json_path)
+    video_dir = os.path.expanduser(args.video_dir)
+    os.makedirs("cache/", exist_ok=True)
+    output_path = "cache/vlbench_s3dg.csv"
+    convert_multi3bench(dataset_path, output_path, video_dir)
+    extract(
+        dataset_path=output_path, batch_size=8, num_decoding_thread=1, debug=args.debug
+    )
+    return
+
+
 def run_vlbench(args):
+    if not args.process_at_train:
+        run_preprocessing(args)
     device = args.device
     benchmark_path = os.path.expanduser(args.json_path)
     model = init_model(args, device=device)
@@ -48,13 +66,16 @@ def run_vlbench(args):
         video_feature_extractor=s3dg_model,
         videodir=args.video_dir,
         device=device,
+        process_at_train=True if args.process_at_train else False,
     )
 
     dataloader = torch.utils.data.DataLoader(vldataset, batch_size=1, shuffle=False)
     with torch.no_grad():
         pairwise_acc = 0
         for batch in tqdm(dataloader):
-            video, _text = batch
+            video, _text, video_id = batch
+            if args.debug:
+                print(video_id[0])
             video_feat = video["video_feat"].to(device)
             video_mask = video["video_mask"].to(device)
             capt_id = _text["capt"].to(device)
@@ -88,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--json_path",
         type=str,
-        default="~/datasets/vl-bench/cos-balanced.reduced.json",
+        default="~/datasets/vl-bench/cos-balanced.filtered.json",
     )
     parser.add_argument("--instrument", type=str, default="change-of-state")
     parser.add_argument("--task", type=str, default="action")
@@ -118,15 +139,11 @@ if __name__ == "__main__":
         help="rate of intra negative sample",
     )
     parser.add_argument(
-        "--use_mil",
-        action="store_true",
-        help="Whether use MIL as Miech et. al. (2020).",
+        "--use_mil", action="store_true", help="Whether use MIL as Miech et. al. (2020)"
     )
-    parser.add_argument(
-        "--device",
-        type=str,
-        default="cpu",
-    )
+    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--process_at_train", action="store_true")
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
     run_vlbench(args)
