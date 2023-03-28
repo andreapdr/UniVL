@@ -79,7 +79,7 @@ class VLBenchDataset(Dataset):
                 video_fname = self.data[video_id]["youtube_id"]
             else:
                 video_fname = self.data[video_id]["video_file"]
-            feature_path = os.path.join("tmp", "processed", video_fname + ".npy")
+            feature_path = os.path.join("cache", "processed", video_fname + ".npy")
             video_feat = np.load(feature_path)
         video_mask = torch.ones(size=(1, video_feat.shape[0]))  # TODO: check this
         return {"video_feat": video_feat, "video_mask": video_mask}

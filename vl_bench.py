@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--json_path",
         type=str,
-        default="~/datasets/vl-bench/cos-balanced.filtered.json",
+        default="~/datasets/vl-bench/cos-balanced.json",
     )
     parser.add_argument("--instrument", type=str, default="change-of-state")
     parser.add_argument("--task", type=str, default="action")
