@@ -87,7 +87,7 @@ class VLBenchDataset(Dataset):
     def __getitem__(self, idx):
         text = self._get_text(idx)
         video = self._get_video(idx)
-        video_id = self.data[idx]["top_level_key"]
+        video_id = self.data[idx]["dataset_idx"]
         return video, text, video_id
 
     def _extract_features(self, idx):
