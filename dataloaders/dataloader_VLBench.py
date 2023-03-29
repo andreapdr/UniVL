@@ -25,14 +25,12 @@ class VLBenchDataset(Dataset):
         tokenizer,
         video_feature_extractor,
         videodir="~/datasets/vl-bench/videos",
-        task="action",
         device="cpu",
         centercrop=True,
         process_at_train=False,
     ):
         self._data = json.load(open(datapath))
         self.data = list(self._data.values())
-        self.task = task
         self.tokenizer = tokenizer
         self.video_feat_extractor = video_feature_extractor
         self.video_preprocessor = Preprocessing(
