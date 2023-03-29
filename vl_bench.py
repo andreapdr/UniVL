@@ -44,6 +44,7 @@ def run_preprocessing(args):
 
 
 def run_vlbench(args):
+    print(f"- evaluating on: {args.json_path}")
     if not args.process_at_train:
         run_preprocessing(args)
     device = args.device
@@ -61,8 +62,6 @@ def run_vlbench(args):
     vldataset = VLBenchDataset(
         datapath=benchmark_path,
         tokenizer=tokenizer,
-        instrument=args.instrument,
-        task=args.task,
         video_feature_extractor=s3dg_model,
         videodir=args.video_dir,
         device=device,
@@ -109,10 +108,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--json_path",
         type=str,
-        default="~/datasets/vl-bench/cos-balanced.json",
+        default="~/datasets/vl-bench/change-state-action.json",
     )
-    parser.add_argument("--instrument", type=str, default="change-of-state")
-    parser.add_argument("--task", type=str, default="action")
     parser.add_argument("--video_dir", type=str, default="~/datasets/vl-bench/videos")
     parser.add_argument("--max_words", type=int, default=20)
     parser.add_argument("--max_frames", type=int, default=100)
@@ -142,7 +139,11 @@ if __name__ == "__main__":
         "--use_mil", action="store_true", help="Whether use MIL as Miech et. al. (2020)"
     )
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--process_at_train", action="store_true")
+    parser.add_argument(
+        "--process_at_train",
+        action="store_true",
+        help="Extract video features at run time instead of pre-processing them before inference",
+    )
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 

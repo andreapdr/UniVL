@@ -25,7 +25,6 @@ class VLBenchDataset(Dataset):
         tokenizer,
         video_feature_extractor,
         videodir="~/datasets/vl-bench/videos",
-        instrument="change-of-state",
         task="action",
         device="cpu",
         centercrop=True,
@@ -34,7 +33,6 @@ class VLBenchDataset(Dataset):
         self._data = json.load(open(datapath))
         self.data = list(self._data.values())
         self.task = task
-        self.instrument = instrument
         self.tokenizer = tokenizer
         self.video_feat_extractor = video_feature_extractor
         self.video_preprocessor = Preprocessing(
@@ -44,14 +42,13 @@ class VLBenchDataset(Dataset):
         self.device = device
         self.centercrop = centercrop
         self.process_at_train = process_at_train
-        print(f"- evaluating instrument: {self.instrument} on setting: {self.task}")
 
     def __len__(self):
         return len(self.data)
 
     def _get_text(self, idx):
-        _capt = self.data[idx]["foils"][self.task][0]
-        _foil = self.data[idx]["foils"][self.task][1]
+        _capt = self.data[idx]["caption"]
+        _foil = self.data[idx]["foils"][0]
         capt = self.tokenizer.convert_tokens_to_ids(
             ["[CLS]"] + self.tokenizer.tokenize(_capt.lower()) + ["[SEP]"]
         )
