@@ -33,12 +33,18 @@ def run_preprocessing(args):
 
     print("- extracting video features via S3DG")
     dataset_path = os.path.expanduser(args.json_path)
+    dataset_name = dataset_path.split("/")[-1].split(".")[0]
+    if "change-state" in dataset_name:
+        # to avoid recomputing video feats for the different settings
+        dataset_name = "change-state"
     video_dir = os.path.expanduser(args.video_dir)
-    os.makedirs("cache/", exist_ok=True)
-    output_path = "cache/vlbench_s3dg.csv"
-    convert_multi3bench(dataset_path, output_path, video_dir)
+    cache_path = f"cache/{dataset_name}"
+    os.makedirs(cache_path, exist_ok=True)
+    output_path = f"{cache_path}/vlbench_s3dg.csv"
+    print(f"- video directory: {video_dir}\n- cache dir: {cache_path}")
+    convert_multi3bench(dataset_path, output_path, cache_path, video_dir)
     extract(
-        dataset_path=output_path, batch_size=8, num_decoding_thread=1, debug=args.debug
+        dataset_path=output_path, batch_size=1, num_decoding_thread=1, debug=args.debug
     )
     return
 
@@ -108,9 +114,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--json_path",
         type=str,
-        default="~/datasets/vl-bench/change-state-action.json",
+        default="~/datasets/vl-bench/annotations/change-state-action.json",
     )
-    parser.add_argument("--video_dir", type=str, default="~/datasets/vl-bench/videos")
+    parser.add_argument(
+        "--video_dir",
+        type=str,
+        default="~/datasets/vl-bench/videos/change-state",
+    )
     parser.add_argument("--max_words", type=int, default=20)
     parser.add_argument("--max_frames", type=int, default=100)
     parser.add_argument("--stage_two", action="store_true")
