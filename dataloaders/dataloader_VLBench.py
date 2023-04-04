@@ -103,7 +103,7 @@ class VLBenchDataset(Dataset):
         video = self._get_video(idx)
         video_id = self.data[idx]["dataset_idx"]
         return video, text, video_id
-    
+
     def _get_video_dim(self, video_path):
         probe = ffmpeg.probe(video_path)
         video_stream = next(
@@ -172,7 +172,7 @@ class VLBenchDataset(Dataset):
             height, width = 224, 224
         video = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
         video = torch.from_numpy(video.astype("float32"))
-        video = video.permute(0, 3, 1, 2".format(video_path))
+        video = video.permute(0, 3, 1, 2)
 
         with torch.no_grad():
             self.video_feat_extractor.eval()
@@ -184,4 +184,3 @@ class VLBenchDataset(Dataset):
             video = F.normalize(video, dim=1)
             video = video.to("cpu").numpy()
         return video
-    
