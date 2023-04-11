@@ -10,3 +10,6 @@ pytorch_model.bin
 vocab.txt
 VideoFeatureExtractor
 cache
+results_change-state-action.json.json
+run_change-state.sh
+run_relations.sh
