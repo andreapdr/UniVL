@@ -6,6 +6,7 @@ from modules.tokenization import BertTokenizer
 from tqdm import tqdm
 from dataloaders.dataloader_VLBench import VLBenchDataset
 from VideoFeatureExtractor.model import get_s3dg_model
+import json
 
 
 def init_model(args, device):
@@ -31,7 +32,7 @@ def run_preprocessing(args):
     from VideoFeatureExtractor.preprocess_vlbench import convert_multi3bench
     from VideoFeatureExtractor.extract import extract
 
-    print("- extracting video features via S3DG")
+    # print("- extracting video features via S3DG")
     dataset_path = os.path.expanduser(args.json_path)
     dataset_name = dataset_path.split("/")[-1].split(".")[0]
     if "change-state" in dataset_name:
@@ -41,7 +42,7 @@ def run_preprocessing(args):
     cache_path = f"cache/{dataset_name}"
     os.makedirs(cache_path, exist_ok=True)
     output_path = f"{cache_path}/vlbench_s3dg.csv"
-    print(f"- video directory: {video_dir}\n- cache dir: {cache_path}")
+    # print(f"- video directory: {video_dir}\n- cache dir: {cache_path}")
     convert_multi3bench(dataset_path, output_path, cache_path, video_dir)
     extract(
         dataset_path=output_path, batch_size=1, num_decoding_thread=1, debug=args.debug
@@ -59,11 +60,11 @@ def run_vlbench(args):
     model.eval()
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased", do_lower_case=True)
 
-    print("- loaded pre-trained UniVL model")
+    # print("- loaded pre-trained UniVL model")
     s3dg_model = get_s3dg_model(
         s3dg_path="VideoFeatureExtractor/model/s3d_howto100m.pth", device=device
     )
-    print("- loaded pre-trained S3DG video-feature extractor")
+    # print("- loaded pre-trained S3DG video-feature extractor")
 
     vldataset = VLBenchDataset(
         datapath=benchmark_path,
@@ -74,11 +75,13 @@ def run_vlbench(args):
         process_at_train=True if args.process_at_train else False,
     )
 
+    results = {}
+
     dataloader = torch.utils.data.DataLoader(vldataset, batch_size=1, shuffle=False)
     with torch.no_grad():
         pairwise_acc = 0
         for batch in tqdm(dataloader):
-            video, _text, video_id = batch
+            video, _text, video_id, ann_id = batch
             if args.debug:
                 print(video_id[0])
             video_feat = video["video_feat"].to(device)
@@ -106,7 +109,11 @@ def run_vlbench(args):
             if capt_sim > foil_sim:
                 pairwise_acc += 1
 
+            results[ann_id[0]] = {"scores": [capt_sim.item(), foil_sim.item()]}
+
         print(f"- Pairwise accuracy: {pairwise_acc / len(vldataset):.3f}")
+
+    json.dump(results, open(f"results_{args.json_path.split('/')[-1]}.json", "w"))
 
 
 if __name__ == "__main__":

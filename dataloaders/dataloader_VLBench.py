@@ -102,7 +102,7 @@ class VLBenchDataset(Dataset):
         text = self._get_text(idx)
         video = self._get_video(idx)
         video_id = self.data[idx]["dataset_idx"]
-        return video, text, video_id
+        return video, text, video_id, str(idx)
 
     def _get_video_dim(self, video_path):
         probe = ffmpeg.probe(video_path)

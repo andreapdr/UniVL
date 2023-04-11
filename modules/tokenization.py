@@ -28,24 +28,24 @@ from .file_utils import cached_path
 
 logger = logging.getLogger(__name__)
 PRETRAINED_VOCAB_ARCHIVE_MAP = {
-    'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
-    'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
-    'bert-base-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
-    'bert-large-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
-    'bert-base-multilingual-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
-    'bert-base-multilingual-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
-    'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
+    "bert-base-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
+    "bert-large-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
+    "bert-base-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
+    "bert-large-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
+    "bert-base-multilingual-uncased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
+    "bert-base-multilingual-cased": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
+    "bert-base-chinese": "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
 }
 PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP = {
-    'base-uncased': 512,
-    'large-uncased': 512,
-    'base-cased': 512,
-    'large-cased': 512,
-    'base-multilingual-uncased': 512,
-    'base-multilingual-cased': 512,
-    'base-chinese': 512,
+    "base-uncased": 512,
+    "large-uncased": 512,
+    "base-cased": 512,
+    "large-cased": 512,
+    "base-multilingual-uncased": 512,
+    "base-multilingual-cased": 512,
+    "base-chinese": 512,
 }
-VOCAB_NAME = 'vocab.txt'
+VOCAB_NAME = "vocab.txt"
 
 
 def load_vocab(vocab_file):
@@ -75,15 +75,27 @@ def whitespace_tokenize(text):
 class BertTokenizer(object):
     """Runs end-to-end tokenization: punctuation splitting"""
 
-    def __init__(self, vocab_file, do_lower_case=True, max_len=None, never_split=("[UNK]", "[SEP]", "[MASK]", "[CLS]")):
+    def __init__(
+        self,
+        vocab_file,
+        do_lower_case=True,
+        max_len=None,
+        never_split=("[UNK]", "[SEP]", "[MASK]", "[CLS]"),
+    ):
         if not os.path.isfile(vocab_file):
             raise ValueError(
                 "Can't find a vocabulary file at path '{}'. To load the vocabulary from a Google pretrained "
-                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(vocab_file))
+                "model use `tokenizer = BertTokenizer.from_pretrained(PRETRAINED_MODEL_NAME)`".format(
+                    vocab_file
+                )
+            )
         self.vocab = load_vocab(vocab_file)
         self.ids_to_tokens = collections.OrderedDict(
-            [(ids, tok) for tok, ids in self.vocab.items()])
-        self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case, never_split=never_split)
+            [(ids, tok) for tok, ids in self.vocab.items()]
+        )
+        self.basic_tokenizer = BasicTokenizer(
+            do_lower_case=do_lower_case, never_split=never_split
+        )
         self.wordpiece_tokenizer = WordpieceTokenizer(vocab=self.vocab)
         self.max_len = max_len if max_len is not None else int(1e12)
 
@@ -100,14 +112,18 @@ class BertTokenizer(object):
         for token in tokens:
             if token not in self.vocab:
                 ids.append(self.vocab["[UNK]"])
-                logger.error("Cannot find token '{}' in vocab. Using [UNK] insetad".format(token))
+                logger.error(
+                    "Cannot find token '{}' in vocab. Using [UNK] insetad".format(token)
+                )
             else:
                 ids.append(self.vocab[token])
         if len(ids) > self.max_len:
             raise ValueError(
                 "Token indices sequence length is longer than the specified maximum "
                 " sequence length for this BERT model ({} > {}). Running this"
-                " sequence through BERT will result in indexing errors".format(len(ids), self.max_len)
+                " sequence through BERT will result in indexing errors".format(
+                    len(ids), self.max_len
+                )
             )
         return ids
 
@@ -124,7 +140,9 @@ class BertTokenizer(object):
         Instantiate a PreTrainedBertModel from a pre-trained model file.
         Download and cache the pre-trained model file if needed.
         """
-        vocab_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), pretrained_model_name)
+        vocab_file = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), pretrained_model_name
+        )
         if os.path.exists(vocab_file) is False:
             if pretrained_model_name in PRETRAINED_VOCAB_ARCHIVE_MAP:
                 vocab_file = PRETRAINED_VOCAB_ARCHIVE_MAP[pretrained_model_name]
@@ -133,7 +151,7 @@ class BertTokenizer(object):
         if os.path.isdir(vocab_file):
             vocab_file = os.path.join(vocab_file, VOCAB_NAME)
         # redirect to the cache, if necessary
-        print(vocab_file)
+        # print(vocab_file)
         try:
             resolved_vocab_file = cached_path(vocab_file, cache_dir=cache_dir)
         except FileNotFoundError:
@@ -141,20 +159,26 @@ class BertTokenizer(object):
                 "Model name '{}' was not found. "
                 "We assumed '{}' was a path or url but couldn't find any file "
                 "associated to this path or url.".format(
-                    pretrained_model_name,
-                    vocab_file))
+                    pretrained_model_name, vocab_file
+                )
+            )
             return None
         if resolved_vocab_file == vocab_file:
             logger.info("loading vocabulary file {}".format(vocab_file))
         else:
-            logger.info("loading vocabulary file {} from cache at {}".format(
-                vocab_file, resolved_vocab_file))
+            logger.info(
+                "loading vocabulary file {} from cache at {}".format(
+                    vocab_file, resolved_vocab_file
+                )
+            )
         if pretrained_model_name in PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP:
             # if we're using a pretrained model, ensure the tokenizer wont index sequences longer
             # than the number of positional embeddings
-            max_len = PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP[pretrained_model_name]
-            kwargs['max_len'] = min(kwargs.get('max_len', int(1e12)), max_len)
-            kwargs['never_split'] = ("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")
+            max_len = PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP[
+                pretrained_model_name
+            ]
+            kwargs["max_len"] = min(kwargs.get("max_len", int(1e12)), max_len)
+            kwargs["never_split"] = ("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")
 
         # Instantiate tokenizer.
         tokenizer = cls(resolved_vocab_file, *inputs, **kwargs)
@@ -191,14 +215,20 @@ class BertTokenizer(object):
             vocab[token] = len(vocab)
         self.vocab = self.wordpiece_tokenizer.vocab = vocab
         self.ids_to_tokens = collections.OrderedDict(
-            [(ids, tok) for tok, ids in self.vocab.items()])
+            [(ids, tok) for tok, ids in self.vocab.items()]
+        )
 
         model.resize_token_embeddings(new_num_tokens=len(vocab))
+
 
 class BasicTokenizer(object):
     """Runs basic tokenization (punctuation splitting, lower casing, etc.)."""
 
-    def __init__(self, do_lower_case=True, never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]")):
+    def __init__(
+        self,
+        do_lower_case=True,
+        never_split=("[UNK]", "[SEP]", "[PAD]", "[CLS]", "[MASK]"),
+    ):
         """Constructs a BasicTokenizer.
 
         Args:
@@ -284,14 +314,16 @@ class BasicTokenizer(object):
         # as is Japanese Hiragana and Katakana. Those alphabets are used to write
         # space-separated words, so they are not treated specially and handled
         # like the all of the other languages.
-        if ((cp >= 0x4E00 and cp <= 0x9FFF) or  #
-                (cp >= 0x3400 and cp <= 0x4DBF) or  #
-                (cp >= 0x20000 and cp <= 0x2A6DF) or  #
-                (cp >= 0x2A700 and cp <= 0x2B73F) or  #
-                (cp >= 0x2B740 and cp <= 0x2B81F) or  #
-                (cp >= 0x2B820 and cp <= 0x2CEAF) or
-                (cp >= 0xF900 and cp <= 0xFAFF) or  #
-                (cp >= 0x2F800 and cp <= 0x2FA1F)):  #
+        if (
+            (cp >= 0x4E00 and cp <= 0x9FFF)
+            or (cp >= 0x3400 and cp <= 0x4DBF)  #
+            or (cp >= 0x20000 and cp <= 0x2A6DF)  #
+            or (cp >= 0x2A700 and cp <= 0x2B73F)  #
+            or (cp >= 0x2B740 and cp <= 0x2B81F)  #
+            or (cp >= 0x2B820 and cp <= 0x2CEAF)  #
+            or (cp >= 0xF900 and cp <= 0xFAFF)
+            or (cp >= 0x2F800 and cp <= 0x2FA1F)  #
+        ):  #
             return True
 
         return False
@@ -301,13 +333,14 @@ class BasicTokenizer(object):
         output = []
         for char in text:
             cp = ord(char)
-            if cp == 0 or cp == 0xfffd or _is_control(char):
+            if cp == 0 or cp == 0xFFFD or _is_control(char):
                 continue
             if _is_whitespace(char):
                 output.append(" ")
             else:
                 output.append(char)
         return "".join(output)
+
 
 class WordpieceTokenizer(object):
     """Runs WordPiece tokenization."""
@@ -368,6 +401,7 @@ class WordpieceTokenizer(object):
                 output_tokens.extend(sub_tokens)
         return output_tokens
 
+
 def _is_whitespace(char):
     """Checks whether `chars` is a whitespace character."""
     # \t, \n, and \r are technically contorl characters but we treat them
@@ -399,8 +433,12 @@ def _is_punctuation(char):
     # Characters such as "^", "$", and "`" are not in the Unicode
     # Punctuation class but we treat them as punctuation anyways, for
     # consistency.
-    if ((cp >= 33 and cp <= 47) or (cp >= 58 and cp <= 64) or
-            (cp >= 91 and cp <= 96) or (cp >= 123 and cp <= 126)):
+    if (
+        (cp >= 33 and cp <= 47)
+        or (cp >= 58 and cp <= 64)
+        or (cp >= 91 and cp <= 96)
+        or (cp >= 123 and cp <= 126)
+    ):
         return True
     cat = unicodedata.category(char)
     if cat.startswith("P"):
