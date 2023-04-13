@@ -1,4 +1,7 @@
+import sys
 import os
+sys.path.append(os.path.join(os.path.dirname(__file__)))
+
 import torch
 from modules.modeling import UniVL
 from modules.tokenization import BertTokenizer
@@ -20,7 +23,7 @@ class FOIL_CONFIG:
         self.local_rank = 0
 
 
-def init_model(device):
+def init_univl(device):
     model_state_dict = torch.load(
         "../UniVL/weight/univl.pretrained.bin", map_location="cpu"
     )
