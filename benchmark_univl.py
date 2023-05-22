@@ -1,10 +1,13 @@
 import sys
 import os
+
 sys.path.append(os.path.join(os.path.dirname(__file__)))
 
 import torch
 from modules.modeling import UniVL
 from modules.tokenization import BertTokenizer
+from VideoFeatureExtractor.preprocess_vlbench import convert_multi3bench
+from VideoFeatureExtractor.extract import extract
 
 
 class FOIL_CONFIG:
@@ -54,9 +57,6 @@ def run_preprocessing(
     rareact_dir,
     cache_dir="./cache",
 ):
-    from VideoFeatureExtractor.preprocess_vlbench import convert_multi3bench
-    from VideoFeatureExtractor.extract import extract
-
     dataset_path = os.path.expanduser(input_file)
     dataset_name = dataset_path.split("/")[-1].split(".")[0]
     if "change-state" in dataset_name:
